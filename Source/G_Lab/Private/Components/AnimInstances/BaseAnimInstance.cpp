@@ -112,7 +112,6 @@ TArray<FIKParams> UBaseAnimInstance::UpdateIKs()
         );
     }
 
-    //this->IsTransitioning = false;
     if (this->IsTransitioning) 
     {
         this->InterpolateIKTransition();
@@ -176,6 +175,12 @@ void UBaseAnimInstance::SetInitialIKTransitions(TArray<FTransitIKParams> iksToTr
         if (this->IKParams.Contains(currentIK.IKName)) 
         {
             currentIK.InitialLocation = this->IKParams[currentIK.IKName].CurrentLockLocation;
+            
+            for (TSubclassOf<UObject> modifierClass : currentIK.Modifier) 
+            {
+                ITransitionModifier* modifierInstance = Cast<ITransitionModifier>( modifierClass.GetDefaultObject() );
+                currentIK.ModifierInstances.Add(modifierInstance);
+            }
             
             this->IKTransitionInitialLocation.Add(
                     currentIK.IKName
@@ -244,6 +249,12 @@ void UBaseAnimInstance::InterpolateIKTransition()
         {
             this->IKParams[ik].FinalIKLocation = this->GetRelativeIKLocation(transitingLocation);
         }
+
+        for (ITransitionModifier* currentModifier : currentTransit.ModifierInstances) 
+        {
+            if(currentModifier)
+            currentModifier->Execute(this, this->IKParams[ik], currentTransit);
+        }
         
         this->IKParams[ik].CurrentLockLocation = transitingLocation;
     }
@@ -268,4 +279,12 @@ FVector UBaseAnimInstance::GetRelativeIKLocation(FVector ikLocation)
         character->GetMesh()->GetComponentQuat(),
         character->GetMesh()->GetComponentLocation()
     ).InverseTransformPosition(ikLocation);
+}
+
+void UTransitionModifierAdditionalHeight::Execute(UBaseAnimInstance* anim, FIKParams& currentParam, FTransitIKParams& transitParams)
+{
+    float currentHeightRate = 1 - anim->GetCurveValue(this->HeightCurve);
+
+    currentParam.FinalIKLocation.Z += currentHeightRate * this->HeightScale;
+
 }

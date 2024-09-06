@@ -6,6 +6,9 @@
 #include "Animation/AnimInstance.h"
 #include "BaseAnimInstance.generated.h"
 
+/****
+* IKS
+*****/
 USTRUCT(BlueprintType)
 struct FIKParams 
 {
@@ -102,6 +105,43 @@ public:
 	float Weight;
 };
 
+
+/************
+* TRANSITIONS
+*************/
+UINTERFACE()
+class UTransitionModifier : public UInterface
+{
+	GENERATED_BODY()
+};
+
+class G_LAB_API ITransitionModifier
+{
+	GENERATED_BODY()
+
+public:
+
+	virtual void Execute(UBaseAnimInstance* anim, FIKParams& currentParam, FTransitIKParams& transitParams) PURE_VIRTUAL(TEXT("NOT IMPLEMENTED YET"), return; );
+
+};
+
+UCLASS(BlueprintType, Blueprintable, EditInlineNew, DefaultToInstanced)
+class G_LAB_API UTransitionModifierAdditionalHeight : public UObject, public ITransitionModifier
+{
+
+	GENERATED_BODY()
+
+public:
+
+	virtual void Execute(UBaseAnimInstance* anim, FIKParams& currentParam, FTransitIKParams& transitParams) override;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName HeightCurve;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float HeightScale{ 8 };
+};
+
 USTRUCT(BlueprintType, Blueprintable)
 struct FTransitIKParams 
 {
@@ -122,6 +162,12 @@ public:
 
 	UPROPERTY(BlueprintReadOnly)
 	FVector InitialLocation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (MustImplement = "TransitionModifier"))
+	TArray<TSubclassOf<UObject>> Modifier;
+
+	UPROPERTY()
+	TArray<ITransitionModifier*> ModifierInstances;
 };
 
 /**
