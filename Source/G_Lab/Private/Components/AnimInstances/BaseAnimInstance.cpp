@@ -114,19 +114,32 @@ TArray<FIKParams> UBaseAnimInstance::UpdateIKs()
         );
     }
 
-    
+    this->UpdateRoots();
+
+
+    if (this->IsTransitioning) 
+    {
+        this->InterpolateIKTransition();
+    }
+
+    return this->GetIKParamsValues();
+
+}
+
+void UBaseAnimInstance::UpdateRoots()
+{
     USkeletalMeshComponent* body = this->GetOwningComponent();
 
-    for (FIKRoots& currentRoot : this->IKRoots) 
+    for (FIKRoots& currentRoot : this->IKRoots)
     {
         currentRoot.RootShouldDealocate = false;
-        
+
         FVector rootLocation = body->GetSocketLocation(currentRoot.RootReference);
-        
+
         float excedingDealocation = 0;
         FVector directionDealocation = FVector::Zero();
 
-        for (FName childIK: currentRoot.ChildIKs) 
+        for (FName childIK : currentRoot.ChildIKs)
         {
             FVector ikDealocation = this->IKParams[childIK].CurrentLockLocation - rootLocation;
 
@@ -139,11 +152,11 @@ TArray<FIKParams> UBaseAnimInstance::UpdateIKs()
                 currentRoot.RootShouldDealocate = true;
             }
         }
-        
-        if (currentRoot.RootShouldDealocate) 
+
+        if (currentRoot.RootShouldDealocate)
         {
             //TODO: IMPLEMENT OBTAIN OF WEIGHT WITHOUT CURVES
-            
+
             float rootIKWeight = this->GetCurveValue(currentRoot.RootIKWeightCurveName);
             FVector additionalRootDealocation = (directionDealocation * excedingDealocation * rootIKWeight);
 
@@ -160,18 +173,9 @@ TArray<FIKParams> UBaseAnimInstance::UpdateIKs()
 
         FVector greaterDealocation = FVector::Zero();
     }
-
-
-    if (this->IsTransitioning) 
-    {
-        this->InterpolateIKTransition();
-    }
-
-    return this->GetIKParamsValues();
-
 }
-#pragma optimize("", on)
 
+#pragma optimize("", on)
 void UBaseAnimInstance::UpdateVelocityStats()
 {
     FVector currrentVelocity    = this->GetOwningActor()->GetVelocity();

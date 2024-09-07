@@ -177,6 +177,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	TArray<FIKParams> UpdateIKs();
+
+	void UpdateRoots();
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Settings|IKs")
 	TMap<FName, FIKParams> IKParams;
