@@ -71,6 +71,9 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	bool Hitted;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float MaxLength;
+
 };
 
 USTRUCT(BlueprintType)
@@ -100,6 +103,37 @@ public:
 
 	UPROPERTY()
 	float Weight;
+};
+
+USTRUCT(BlueprintType, Blueprintable)
+struct FIKRoots
+{
+
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName RootReference;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName RootName;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FName> ChildIKs;
+
+	UPROPERTY(BlueprintReadOnly)
+	bool RootShouldDealocate;
+
+	UPROPERTY(BlueprintReadOnly)
+	FVector RootLocation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName RootIKWeightCurveName;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float RootIKWeight;
+
 };
 
 USTRUCT(BlueprintType, Blueprintable)
@@ -158,6 +192,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void SetStopping(bool flag);
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|IKs")
+	TArray<FIKRoots> IKRoots;
 
 	/***************
 	* VELOCITY STATS
