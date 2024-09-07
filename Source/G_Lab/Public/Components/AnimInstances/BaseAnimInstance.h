@@ -303,7 +303,7 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	bool IsTransitioning;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Movement")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool StoppingMovementAnimEnabled;
 
 	UPROPERTY()
