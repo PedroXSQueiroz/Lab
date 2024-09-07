@@ -4,7 +4,6 @@
 #include "Components/AnimInstances/BaseAnimInstance.h"
 
 #include "GameFramework/Character.h"
-
 #include "Kismet/KismetMathLibrary.h"
 
 #pragma optimize("", off)
@@ -100,6 +99,7 @@ FIKData UBaseAnimInstance::GetIKData(const FIKParams& ikParams, bool& hitted)
 }
 #pragma optimize("", on)
 
+#pragma optimize("", off)
 TArray<FIKParams> UBaseAnimInstance::UpdateIKs()
 {
     ACharacter* character = Cast<ACharacter>( this->GetOwningActor() );
@@ -127,6 +127,9 @@ TArray<FIKParams> UBaseAnimInstance::UpdateIKs()
         );
     }
 
+    this->UpdateRoots();
+
+
     if (this->IsTransitioning) 
     {
         this->InterpolateIKTransition();
@@ -135,7 +138,58 @@ TArray<FIKParams> UBaseAnimInstance::UpdateIKs()
     return this->GetIKParamsValues();
 
 }
+#pragma optimize("", on)
 
+void UBaseAnimInstance::UpdateRoots()
+{
+    USkeletalMeshComponent* body = this->GetOwningComponent();
+
+    for (FIKRoots& currentRoot : this->IKRoots)
+    {
+        currentRoot.RootShouldDealocate = false;
+
+        FVector rootLocation = body->GetSocketLocation(currentRoot.RootReference);
+
+        float excedingDealocation = 0;
+        FVector directionDealocation = FVector::Zero();
+
+        for (FName childIK : currentRoot.ChildIKs)
+        {
+            FVector ikDealocation = this->IKParams[childIK].CurrentLockLocation - rootLocation;
+
+            float currentExcedingDealocation = ikDealocation.Length() - this->IKParams[childIK].MaxLength;
+
+            if (currentExcedingDealocation > 0 && currentExcedingDealocation > excedingDealocation)
+            {
+                excedingDealocation = currentExcedingDealocation;
+                directionDealocation = this->IKParams[childIK].TraceDirection;
+                currentRoot.RootShouldDealocate = true;
+            }
+        }
+
+        if (currentRoot.RootShouldDealocate)
+        {
+            //TODO: IMPLEMENT OBTAIN OF WEIGHT WITHOUT CURVES
+
+            float rootIKWeight = this->GetCurveValue(currentRoot.RootIKWeightCurveName);
+            FVector additionalRootDealocation = (directionDealocation * excedingDealocation * rootIKWeight);
+
+            currentRoot.RootLocation = additionalRootDealocation;
+
+            DrawDebugSphere(
+                this->GetWorld(),
+                currentRoot.RootLocation + rootLocation,
+                12,
+                12,
+                FColor::Purple
+            );
+        }
+
+        FVector greaterDealocation = FVector::Zero();
+    }
+}
+
+#pragma optimize("", on)
 void UBaseAnimInstance::UpdateVelocityStats()
 {
     FVector currrentVelocity    = this->GetOwningActor()->GetVelocity();
