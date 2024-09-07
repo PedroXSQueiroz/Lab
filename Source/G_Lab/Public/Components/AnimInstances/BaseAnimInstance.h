@@ -65,11 +65,17 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float TraceRadius;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector HittedTraceLocation;
+
 	UPROPERTY(BlueprintReadOnly)
 	FVector CurrentLockLocation;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FVector FinalIKLocation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FRotator FinalIKRotation;
 
 	UPROPERTY(BlueprintReadOnly)
 	bool Hitted;
@@ -86,11 +92,12 @@ public:
 	FIKData() {};
 
 	FIKData(
-			FVector reference
+			FVector hittedTraceLocation
+		,	FVector reference
 		,	FVector location
 		,	float weight
-	): 
-		StartReferenceLocation(reference)
+	):	HittedTraceLocation(hittedTraceLocation)
+	,	StartReferenceLocation(reference)
 	,	Location(location)
 	,	Weight(weight)
 	{};
@@ -100,6 +107,9 @@ public:
 
 	UPROPERTY()
 	FVector Location;
+
+	UPROPERTY()
+	FVector HittedTraceLocation;
 
 	UPROPERTY()
 	float Weight;
@@ -168,6 +178,28 @@ public:
 
 	UPROPERTY()
 	TArray<ITransitionModifier*> ModifierInstances;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName RootCurveName;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName RootBoneReference;
+
+	UPROPERTY()
+	FVector TransitLockLocation;
+
+	UPROPERTY()
+	FVector InitialRootLocation;
+
+	UPROPERTY()
+	FRotator InitialRootRotation;
+
+	UPROPERTY(BlueprintReadWrite)
+	FVector CurrentRootLocation;
+
+	UPROPERTY(BlueprintReadWrite)
+	FRotator CurrrentRootRotation;
+
 };
 
 /**
@@ -199,11 +231,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure = true)
 	TArray<FIKParams> GetIKParamsValues();
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Movement")
-	bool StoppingMovementAnimEnabled;
-
 	UFUNCTION(BlueprintCallable)
 	void SetStopping(bool flag);
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|IKs")
+	bool DebugIKs { false };
 
 	/***************
 	* VELOCITY STATS
@@ -232,6 +264,9 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	bool IsTransitioning;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Movement")
+	bool StoppingMovementAnimEnabled;
+
 	UPROPERTY()
 	TMap<FName, FTransitIKParams> IKTransitionInitialLocation;
 
@@ -246,7 +281,19 @@ public:
 	
 	FVector GetRelativeIKLocation(FVector ikLocation);
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Movement")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Transition|Movement")
 	bool MovingIdleTransitAnimEnabled;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Transition|IKs")
+	bool DebugTransitionIKs{ false };
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Transition|IKs")
+	bool OverrideRootDuringTransition;
+
+	UPROPERTY(BlueprintReadWrite)
+	FVector OverrideRootDuringTranitionLocation;
+
+	UPROPERTY(BlueprintReadWrite)
+	FRotator OverrideRootDuringTranitionRotator;
 
 };

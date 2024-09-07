@@ -5,6 +5,8 @@
 
 #include "GameFramework/Character.h"
 
+#include "Kismet/KismetMathLibrary.h"
+
 #pragma optimize("", off)
 FIKData UBaseAnimInstance::GetIKData(const FIKParams& ikParams, bool& hitted)
 {
@@ -19,8 +21,6 @@ FIKData UBaseAnimInstance::GetIKData(const FIKParams& ikParams, bool& hitted)
             this->GetCurveValue(ikParams.WeightCurveName) 
         :   ikParams.Weight;
 
-    UE_LOG(LogTemp, Log, TEXT("WEIGHT:%.2f"), currentWeight);
-    
     bool getLockWeightByCurve = ikParams.LockWeightCurveName.IsValid() 
                             &&  !ikParams.LockWeightCurveName.IsNone()
                             &&  ikParams.LockWeightCurveName.GetStringLength() > 0;
@@ -68,14 +68,28 @@ FIKData UBaseAnimInstance::GetIKData(const FIKParams& ikParams, bool& hitted)
 
     if (hitted) 
     {
+        FVector rawIKLocation = traceResult.ImpactPoint + ((ikParams.TraceDirection * -1) * ikParams.Padding);
+        
+        if (this->DebugIKs) 
+        {
+            DrawDebugSphere(
+                this->GetWorld(),
+                rawIKLocation,
+                12,
+                12,
+                FColor::Green
+            );
+        }
+
         FVector ikLocation = FMath::Lerp( 
-                traceResult.ImpactPoint + ((ikParams.TraceDirection * -1) * ikParams.Padding)
+                rawIKLocation
             ,   ikParams.CurrentLockLocation
             ,   currentLockWeight
         );
 
         return FIKData(
-                startReference
+                rawIKLocation
+            ,   startReference
             ,   ikLocation
             ,   currentWeight
         );
@@ -105,6 +119,7 @@ TArray<FIKParams> UBaseAnimInstance::UpdateIKs()
         FIKData ik = this->GetIKData(this->IKParams[currentIk], hitted);
         this->IKParams[currentIk].StartReferenceLocation = ik.StartReferenceLocation;
         this->IKParams[currentIk].CurrentLockLocation = ik.Location;
+        this->IKParams[currentIk].HittedTraceLocation = ik.HittedTraceLocation;
         this->IKParams[currentIk].Hitted = hitted;
         this->IKParams[currentIk].Weight = ik.Weight;
         this->IKParams[currentIk].FinalIKLocation = this->GetRelativeIKLocation(
@@ -170,10 +185,21 @@ void UBaseAnimInstance::SetStopping(bool flag)
 
 void UBaseAnimInstance::SetInitialIKTransitions(TArray<FTransitIKParams> iksToTransit)
 {
+    USkeletalMeshComponent* currentBody = this->GetOwningComponent();
+    
+    if (!currentBody) 
+    {
+        return;
+    }
+
     for (FTransitIKParams currentIK : iksToTransit)
     {
         if (this->IKParams.Contains(currentIK.IKName)) 
         {
+            
+            currentIK.InitialRootLocation = currentBody->GetSocketLocation(this->IKParams[currentIK.IKName].RootBone);
+            currentIK.InitialRootRotation = currentBody->GetSocketRotation(this->IKParams[currentIK.IKName].RootBone);
+
             currentIK.InitialLocation = this->IKParams[currentIK.IKName].CurrentLockLocation;
             
             for (TSubclassOf<UObject> modifierClass : currentIK.Modifier) 
@@ -198,13 +224,58 @@ void UBaseAnimInstance::SetInitialIKTransitions(TArray<FTransitIKParams> iksToTr
 #pragma optimize("", off)
 void UBaseAnimInstance::InterpolateIKTransition()
 {
+    USkeletalMeshComponent* currentBody = this->GetOwningComponent();
+    
+    if (!currentBody) 
+    {
+        return;
+    }
+
     TArray<FName> iks;
 
     this->IKTransitionInitialLocation.GetKeys(iks);
+
+    FVector rootLocationSum = FVector::Zero();
+    FRotator rootRotationSum = FRotator::ZeroRotator;
     
     for (FName ik : iks) 
     {
         
+        float rootWeight = this->GetCurveValue(this->IKTransitionInitialLocation[ik].RootCurveName);
+        
+        FVector currentRootLocation = currentBody->GetSocketLocation(this->IKTransitionInitialLocation[ik].RootBoneReference);
+        FRotator currentRootRotation = currentBody->GetSocketRotation(this->IKTransitionInitialLocation[ik].RootBoneReference);
+
+        this->IKTransitionInitialLocation[ik].CurrentRootLocation = 
+            FMath::Lerp(
+                this->IKTransitionInitialLocation[ik].InitialRootLocation,
+                currentRootLocation,
+                rootWeight
+            );
+
+        this->IKTransitionInitialLocation[ik].CurrrentRootRotation =
+            UKismetMathLibrary::RLerp(
+                this->IKTransitionInitialLocation[ik].InitialRootRotation,
+                currentRootRotation,
+                rootWeight,
+                true
+            );
+
+        rootLocationSum += this->IKTransitionInitialLocation[ik].CurrentRootLocation;
+        rootRotationSum = this->IKTransitionInitialLocation[ik].CurrrentRootRotation;
+
+        if (this->DebugIKs) 
+        {
+            DrawDebugSphere(
+                this->GetWorld(),
+                this->IKTransitionInitialLocation[ik].CurrentRootLocation,
+                24,
+                12,
+                FColor::Purple
+            );
+        }
+
+
         FTransitIKParams currentTransit = this->IKTransitionInitialLocation[ik];
         FVector currentInitialLocation = currentTransit.InitialLocation;
 
@@ -242,7 +313,8 @@ void UBaseAnimInstance::InterpolateIKTransition()
         
         if (hitted) 
         {
-            transitingLocation = traceResult.ImpactPoint + ((this->IKParams[ik].TraceDirection * -1) * this->IKParams[ik].Padding);
+            transitingLocation = traceResult.ImpactPoint +((this->IKParams[ik].TraceDirection * -1) * this->IKParams[ik].Padding);
+            this->IKTransitionInitialLocation[ik].TransitLockLocation = transitingLocation;
             this->IKParams[ik].FinalIKLocation = this->GetRelativeIKLocation(transitingLocation);
         }
         else
@@ -255,9 +327,13 @@ void UBaseAnimInstance::InterpolateIKTransition()
             if(currentModifier)
             currentModifier->Execute(this, this->IKParams[ik], currentTransit);
         }
-        
+
         this->IKParams[ik].CurrentLockLocation = transitingLocation;
     }
+
+    this->OverrideRootDuringTranitionLocation = rootLocationSum / this->IKTransitionInitialLocation.Num();
+    this->OverrideRootDuringTranitionRotator = rootRotationSum;
+    
 }
 #pragma optimize("", on)
 
@@ -281,10 +357,32 @@ FVector UBaseAnimInstance::GetRelativeIKLocation(FVector ikLocation)
     ).InverseTransformPosition(ikLocation);
 }
 
+#pragma optimize("", off)
 void UTransitionModifierAdditionalHeight::Execute(UBaseAnimInstance* anim, FIKParams& currentParam, FTransitIKParams& transitParams)
 {
     float currentHeightRate = 1 - anim->GetCurveValue(this->HeightCurve);
 
-    currentParam.FinalIKLocation.Z += currentHeightRate * this->HeightScale;
+    UE_LOG(LogTemp, Log, TEXT("ADDITIONAL HEIGHT: %.2f, WEIGHT:%.2f, IK: %s"), currentHeightRate * this->HeightScale, anim->GetCurveValue(this->HeightCurve), *transitParams.IKName.ToString());
+
+    FVector bodyReferenceLocation = anim->GetOwningComponent()->GetComponentLocation();
+    
+    FVector relativeLocationAlignedToGround = FTransform(
+        anim->GetOwningComponent()->GetComponentQuat(),
+        anim->GetOwningComponent()->GetComponentLocation()
+    ).InverseTransformPosition(currentParam.HittedTraceLocation);
+
+    currentParam.FinalIKLocation.Z = relativeLocationAlignedToGround.Z + ( currentHeightRate * this->HeightScale );
+    
+    if (anim->DebugTransitionIKs) 
+    {
+        DrawDebugSphere(
+            anim->GetWorld(),
+            transitParams.TransitLockLocation,
+            12,
+            12,
+            FColor::Blue
+        );
+    }
 
 }
+#pragma optimize("", on)
