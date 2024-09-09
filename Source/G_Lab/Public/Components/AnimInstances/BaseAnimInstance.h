@@ -29,6 +29,17 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName LockWeightCurveName;
 
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName WeightRotationCurveName;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float RotationWeight;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector2D RotationFactor;
+
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName RootBone;
 
@@ -48,6 +59,9 @@ public:
 	bool AddRelativeLocationFromReverseMask;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool AlignEffectorBoneToSurface;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FVector StartTraceMask{ FVector::Zero() };
 
 	UPROPERTY(BlueprintReadWrite)
@@ -65,11 +79,23 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float TraceRadius;
 
+	UPROPERTY(BlueprintReadOnly)
+	FVector HitNormal;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FVector HittedTraceLocation;
 
 	UPROPERTY(BlueprintReadOnly)
 	FVector CurrentLockLocation;
+
+	UPROPERTY(BlueprintReadOnly)
+	FRotator EffectorAddtiveRotation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FRotator EffectorAddtiveRotationOffset;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float EffectorRotationBoneLocalOffsetW;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FVector FinalIKLocation;
@@ -95,14 +121,20 @@ public:
 	FIKData() {};
 
 	FIKData(
-			FVector hittedTraceLocation
+			float weight
+		,	FVector hittedTraceLocation
 		,	FVector reference
+		,	FVector normal
 		,	FVector location
-		,	float weight
-	):	HittedTraceLocation(hittedTraceLocation)
-	,	StartReferenceLocation(reference)
+		,	FRotator rotation = FRotator::ZeroRotator
+		,	float rotationWeight = 0
+	): 
+		StartReferenceLocation(reference)
+	,	HittedTraceLocation(hittedTraceLocation)
 	,	Location(location)
 	,	Weight(weight)
+	,	Rotation(rotation)
+	,	RotationWeight(rotationWeight)
 	{};
 
 	UPROPERTY()
@@ -115,7 +147,17 @@ public:
 	FVector HittedTraceLocation;
 
 	UPROPERTY()
+	FRotator Rotation;
+
+	UPROPERTY()
+	FVector Normal;
+
+	UPROPERTY()
 	float Weight;
+
+	UPROPERTY()
+	float RotationWeight;
+
 };
 
 USTRUCT(BlueprintType, Blueprintable)
