@@ -90,6 +90,7 @@ FIKData UBaseAnimInstance::GetIKData(const FIKParams& ikParams, bool& hitted)
         {
             return FIKData(
                     currentWeight
+                ,   rawIKLocation
                 ,   startReference
                 ,   traceResult.Normal
                 ,   ikLocation
@@ -108,6 +109,7 @@ FIKData UBaseAnimInstance::GetIKData(const FIKParams& ikParams, bool& hitted)
      
         return FIKData(
                 currentWeight
+            ,   rawIKLocation
             ,   startReference
             ,   traceResult.Normal
             ,   ikLocation
@@ -164,6 +166,7 @@ TArray<FIKParams> UBaseAnimInstance::UpdateIKs()
 }
 #pragma optimize("", on)
 
+#pragma optimize("", off)
 void UBaseAnimInstance::UpdateRoots()
 {
     USkeletalMeshComponent* body = this->GetOwningComponent();
@@ -212,8 +215,8 @@ void UBaseAnimInstance::UpdateRoots()
         FVector greaterDealocation = FVector::Zero();
     }
 }
-
 #pragma optimize("", on)
+
 void UBaseAnimInstance::UpdateVelocityStats()
 {
     FVector currrentVelocity    = this->GetOwningActor()->GetVelocity();
@@ -376,6 +379,13 @@ void UBaseAnimInstance::InterpolateIKTransition()
         {
             FVector reverseMask = FVector(1) - this->IKParams[ik].StartTraceMask;
             startTrace += reverseMask * this->IKParams[ik].ReverseMaskStartTraceLocation;
+            DrawDebugSphere(
+                this->GetWorld(),
+                startTrace,
+                12, 
+                12,
+                FColor::Red
+            );
         }
 
         FHitResult traceResult;
