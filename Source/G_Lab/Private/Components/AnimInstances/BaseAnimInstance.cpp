@@ -35,13 +35,14 @@ FIKData UBaseAnimInstance::GetIKData(const FIKParams& ikParams, bool& hitted)
     FVector startReference = FVector::Zero();
     if (ikParams.StartTraceBoneReference.IsValid() && ikParams.StartTraceBoneReference.GetStringLength() > 0) 
     {
-        startReference = this->GetOwningComponent()->GetSocketLocation(ikParams.StartTraceBoneReference) * ikParams.StartTraceMask;
+        startReference = ( this->GetOwningComponent()->GetSocketLocation(ikParams.StartTraceBoneReference) * ikParams.StartTraceMask );
         startTrace = FVector(startReference);
 
         if (ikParams.AddRelativeLocationFromReverseMask) 
         {
             FVector reverseMask = FVector(1) - ikParams.StartTraceMask;
-            startTrace += reverseMask * ikParams.ReverseMaskStartTraceLocation;
+            startTrace += ( reverseMask * ikParams.ReverseMaskStartTraceLocation );
+            startReference += (reverseMask * this->GetOwningComponent()->GetComponentLocation());
         }
     }
     else 
@@ -153,13 +154,12 @@ TArray<FIKParams> UBaseAnimInstance::UpdateIKs()
         );
     }
 
-    this->UpdateRoots();
-
-
     if (this->IsTransitioning) 
     {
         this->InterpolateIKTransition();
     }
+
+    this->UpdateRoots();
 
     return this->GetIKParamsValues();
 
@@ -375,10 +375,25 @@ void UBaseAnimInstance::InterpolateIKTransition()
         FVector transitingLocation = FMath::Lerp(currentInitialLocation, this->IKParams[ik].StartReferenceLocation, interpWeight);
         FVector startTrace = FVector(transitingLocation);
 
+        DrawDebugSphere(
+            this->GetWorld(),
+            startTrace,
+            12,
+            12,
+            FColor::Green
+        );
+
         if (this->IKParams[ik].AddRelativeLocationFromReverseMask)
         {
             FVector reverseMask = FVector(1) - this->IKParams[ik].StartTraceMask;
-            startTrace += reverseMask * this->IKParams[ik].ReverseMaskStartTraceLocation;
+
+            FVector relativeIncreaseStartTrace = this->GetOwningComponent()
+                ->GetComponentTransform()
+                .InverseTransformPosition(
+                    this->IKParams[ik].ReverseMaskStartTraceLocation
+                );
+
+            startTrace += reverseMask * relativeIncreaseStartTrace;
             DrawDebugSphere(
                 this->GetWorld(),
                 startTrace,
