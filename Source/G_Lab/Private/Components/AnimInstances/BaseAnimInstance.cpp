@@ -75,12 +75,34 @@ FIKData UBaseAnimInstance::GetIKData(const FIKParams& ikParams, bool& hitted)
             ,   currentLockWeight
         );
 
-        return FIKData(
-                startReference
-            ,   ikLocation
-            ,   currentWeight
-        );
+        if (!ikParams.AlignEffectorBoneToSurface) 
+        {
+            return FIKData(
+                    currentWeight
+                ,   startReference
+                ,   traceResult.Normal
+                ,   ikLocation
+            );
+        }
 
+        float asideAlignment = UKismetMathLibrary::DegAtan2(traceResult.Normal.Y, traceResult.Normal.Z);
+        float forwardAlignment = UKismetMathLibrary::DegAtan2(traceResult.Normal.X, traceResult.Normal.Z) * -1;
+
+        FRotator effectorBoneAdditiveRotation = FRotator(
+                forwardAlignment + ikParams.EffectorAddtiveRotationOffset.Pitch
+            ,   0
+            ,   asideAlignment + ikParams.EffectorAddtiveRotationOffset.Roll);
+
+        float rotationWeight = this->GetCurveValue(ikParams.WeightRotationCurveName);
+     
+        return FIKData(
+                currentWeight
+            ,   startReference
+            ,   traceResult.Normal
+            ,   ikLocation
+            ,   effectorBoneAdditiveRotation
+            ,   rotationWeight
+        );
     }
 
     return FIKData();
@@ -107,8 +129,11 @@ TArray<FIKParams> UBaseAnimInstance::UpdateIKs()
         FIKData ik = this->GetIKData(this->IKParams[currentIk], hitted);
         this->IKParams[currentIk].StartReferenceLocation = ik.StartReferenceLocation;
         this->IKParams[currentIk].CurrentLockLocation = ik.Location;
+        this->IKParams[currentIk].HitNormal = ik.Normal;
+        this->IKParams[currentIk].EffectorAddtiveRotation = ik.Rotation;
         this->IKParams[currentIk].Hitted = hitted;
         this->IKParams[currentIk].Weight = ik.Weight;
+        this->IKParams[currentIk].RotationWeight = ik.RotationWeight;
         this->IKParams[currentIk].FinalIKLocation = this->GetRelativeIKLocation(
             this->IKParams[currentIk].CurrentLockLocation
         );

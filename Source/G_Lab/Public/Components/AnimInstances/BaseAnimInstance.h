@@ -26,6 +26,17 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName LockWeightCurveName;
 
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName WeightRotationCurveName;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float RotationWeight;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector2D RotationFactor;
+
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName RootBone;
 
@@ -43,6 +54,9 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool AddRelativeLocationFromReverseMask;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool AlignEffectorBoneToSurface;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FVector StartTraceMask{ FVector::Zero() };
@@ -63,7 +77,19 @@ public:
 	float TraceRadius;
 
 	UPROPERTY(BlueprintReadOnly)
+	FVector HitNormal;
+
+	UPROPERTY(BlueprintReadOnly)
 	FVector CurrentLockLocation;
+
+	UPROPERTY(BlueprintReadOnly)
+	FRotator EffectorAddtiveRotation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FRotator EffectorAddtiveRotationOffset;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float EffectorRotationBoneLocalOffsetW;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FVector FinalIKLocation;
@@ -86,13 +112,18 @@ public:
 	FIKData() {};
 
 	FIKData(
-			FVector reference
+			float weight
+		,	FVector reference
+		,	FVector normal
 		,	FVector location
-		,	float weight
+		,	FRotator rotation = FRotator::ZeroRotator
+		,	float rotationWeight = 0
 	): 
 		StartReferenceLocation(reference)
 	,	Location(location)
 	,	Weight(weight)
+	,	Rotation(rotation)
+	,	RotationWeight(rotationWeight)
 	{};
 
 	UPROPERTY()
@@ -102,7 +133,17 @@ public:
 	FVector Location;
 
 	UPROPERTY()
+	FRotator Rotation;
+
+	UPROPERTY()
+	FVector Normal;
+
+	UPROPERTY()
 	float Weight;
+
+	UPROPERTY()
+	float RotationWeight;
+
 };
 
 USTRUCT(BlueprintType, Blueprintable)
