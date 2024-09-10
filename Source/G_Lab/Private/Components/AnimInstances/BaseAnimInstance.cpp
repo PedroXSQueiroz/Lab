@@ -5,8 +5,21 @@
 
 #include "GameFramework/Character.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Algo/Reverse.h"
 
 #pragma optimize("", off)
+FVector UBaseAnimInstance::GetDesiredDirection()
+{
+    ACharacter* player = Cast<ACharacter>( this->GetOwningActor() );
+    
+    if (!player) 
+    {
+        return FVector::Zero();
+    }
+
+    return player->GetLastMovementInputVector();
+}
+
 FIKData UBaseAnimInstance::GetIKData(const FIKParams& ikParams, bool& hitted)
 {
     
@@ -347,4 +360,43 @@ FVector UBaseAnimInstance::GetRelativeIKLocation(FVector ikLocation)
         character->GetMesh()->GetComponentQuat(),
         character->GetMesh()->GetComponentLocation()
     ).InverseTransformPosition(ikLocation);
+}
+
+bool UBaseAnimInstance::SetupLean()
+{
+    
+    for (FLeanParams& lean : this->LeanParans)
+    {
+        TArray<FName> chain { lean.Effector };
+        FName currentBone = FName("");
+
+        do 
+        {
+            currentBone = this->GetOwningComponent()->GetParentBone(chain.Last());
+
+            if (!currentBone.IsNone()) 
+            {
+                chain.Add(currentBone);
+            }
+
+        }while(
+                !currentBone.IsEqual(lean.Root) 
+            &&  !currentBone.IsNone()
+        );
+
+        if (currentBone.IsEqual(lean.Root)) 
+        {
+            chain.Add(lean.Root);
+            Algo::Reverse(chain);
+            lean.BoneChain = chain;
+
+            return true;
+        }
+
+        UE_LOG(LogTemp, Log, TEXT("ROOT AND EFFECTOR LOOKS TO NOT BE IN THE SAME SEQUENCE"));
+
+    }
+
+    return false;
+
 }

@@ -199,6 +199,23 @@ public:
 	FVector InitialLocation;
 };
 
+USTRUCT(BlueprintType, Blueprintable)
+struct FLeanParams 
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName Root;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName Effector;
+
+	UPROPERTY()
+	TArray<FName> BoneChain;
+};
+
 /**
  * 
  */
@@ -209,7 +226,9 @@ class G_LAB_API UBaseAnimInstance : public UAnimInstance
 
 public:
 
-	
+	UFUNCTION(BlueprintCallable, BlueprintPure = true)
+	FVector GetDesiredDirection();
+
 	/*****
 	* IKs
 	*****/
@@ -282,5 +301,15 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Movement")
 	bool MovingIdleTransitAnimEnabled;
+
+	/*****
+	* LEAN
+	******/
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Lean")
+	TArray<FLeanParams> LeanParans;
+
+	UFUNCTION(BlueprintCallable)
+	bool SetupLean();
 
 };
