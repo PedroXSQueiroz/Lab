@@ -365,28 +365,37 @@ FVector UBaseAnimInstance::GetRelativeIKLocation(FVector ikLocation)
 bool UBaseAnimInstance::SetupLean()
 {
     
+    ACharacter* charac = Cast<ACharacter>(this->GetOwningActor());
+    
     for (FLeanParams& lean : this->LeanParans)
     {
-        TArray<FName> chain { lean.Effector };
-        FName currentBone = FName("");
+        TArray<FLeanBone> chain{ FLeanBone( lean.Effector, FTransform() ) };
+        FLeanBone currentBone;
+
+        FName currentBoneName = FName("");
+
+        lean.PreviewLeanAngle = FRotator(
+            0,
+            charac->GetControlRotation().Yaw,
+            0
+        );
 
         do 
         {
-            currentBone = this->GetOwningComponent()->GetParentBone(chain.Last());
+            currentBoneName = this->GetOwningComponent()->GetParentBone(chain.Last().Name);
 
-            if (!currentBone.IsNone()) 
+            if (!currentBoneName.IsNone())
             {
-                chain.Add(currentBone);
+                chain.Add(FLeanBone(currentBoneName, FTransform()));
             }
 
         }while(
-                !currentBone.IsEqual(lean.Root) 
-            &&  !currentBone.IsNone()
+                !currentBoneName.IsEqual(lean.Root)
+            &&  !currentBoneName.IsNone()
         );
 
-        if (currentBone.IsEqual(lean.Root)) 
+        if (currentBoneName.IsEqual(lean.Root))
         {
-            chain.Add(lean.Root);
             Algo::Reverse(chain);
             lean.BoneChain = chain;
 
@@ -399,4 +408,76 @@ bool UBaseAnimInstance::SetupLean()
 
     return false;
 
+}
+
+#pragma optimize("", off)
+void UBaseAnimInstance::UpdateLean()
+{
+    ACharacter* charac = Cast<ACharacter>(this->GetOwningActor());
+
+    if (!charac) 
+    {
+        return;
+    }
+    
+    for (FLeanParams& lean : this->LeanParans) 
+    {
+        float curveOffset = 1.0f / (float) lean.BoneChain.Num();
+        float currentCurveStage = curveOffset;
+        
+        //FIXME: IS POSSIBLE ONLY ON HORIZONTAL PLANE, SHOULD BE POSSIBLE ON ANY DIRECTION
+        FRotator desiredRotation = FRotator(
+            0,
+            charac->GetActorRotation().Yaw,
+            0
+        );
+
+        FRotator diffAngle = UKismetMathLibrary::RLerp(
+                lean.PreviewDiffLeanAngle
+            ,   UKismetMathLibrary::NormalizedDeltaRotator(lean.PreviewLeanAngle, desiredRotation) * charac->GetLastMovementInputVector().Length()    
+            ,   lean.Velocity
+            ,   true
+        );
+
+        for (FLeanBone& currentBone : lean.BoneChain) 
+        {
+            
+            float currentIntensity = lean.LeanIntensityCurve.GetRichCurve()->Eval(currentCurveStage);
+
+            currentBone.Transform.SetRotation(
+                FRotator(
+                    lean.MaxAdditiveAngle.Pitch * diffAngle.Pitch * currentIntensity,
+                    lean.MaxAdditiveAngle.Yaw   * diffAngle.Yaw * currentIntensity,
+                    lean.MaxAdditiveAngle.Roll  * diffAngle.Roll * currentIntensity
+                ).Quaternion()
+            );
+            
+
+            UE_LOG(LogTemp, Log, TEXT("[Lean] bone: %s rot: %.2f, %.2f, %.2f"),
+                *currentBone.Name.ToString(),
+                currentBone.Transform.Rotator().Pitch,
+                currentBone.Transform.Rotator().Yaw,
+                currentBone.Transform.Rotator().Roll
+            );
+
+            currentCurveStage += curveOffset;
+
+        }
+        
+        lean.PreviewDiffLeanAngle = diffAngle;
+        lean.PreviewLeanAngle = desiredRotation;
+    }
+}
+#pragma optimize("", on)
+
+TArray<FLean> UBaseAnimInstance::GetLeans()
+{
+    TArray leans = TArray<FLean>();
+    
+    for (FLeanParams leanParam : this->LeanParans) 
+    {
+        leans.Add(FLean(leanParam.BoneChain));
+    }
+
+    return leans;
 }

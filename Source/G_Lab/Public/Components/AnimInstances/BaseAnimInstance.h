@@ -199,6 +199,28 @@ public:
 	FVector InitialLocation;
 };
 
+USTRUCT()
+struct FLeanBone 
+{
+	GENERATED_BODY()
+	
+public:
+	
+	FLeanBone() {};
+
+	FLeanBone(
+		FName name,
+		FTransform transform
+	):	Name(name)
+	,	Transform(transform){};
+
+	UPROPERTY()
+	FName Name;
+
+	UPROPERTY()
+	FTransform Transform;
+};
+
 USTRUCT(BlueprintType, Blueprintable)
 struct FLeanParams 
 {
@@ -212,8 +234,43 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName Effector;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FRuntimeFloatCurve  LeanIntensityCurve;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FRotator MaxAdditiveAngle;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector MaxAdditiveDealocation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float Velocity {0.8};
+
 	UPROPERTY()
-	TArray<FName> BoneChain;
+	TArray<FLeanBone> BoneChain;
+
+	UPROPERTY()
+	FRotator PreviewLeanAngle;
+
+	UPROPERTY()
+	FRotator PreviewDiffLeanAngle;
+};
+
+USTRUCT(BlueprintType, Blueprintable)
+struct FLean 
+{
+	GENERATED_BODY()
+
+public:
+
+	FLean() {};
+
+	FLean(TArray<FLeanBone> bones)
+	: Bones(bones)
+	{};
+
+	UPROPERTY()
+	TArray<FLeanBone> Bones;
 };
 
 /**
@@ -311,5 +368,11 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	bool SetupLean();
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateLean();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure = true)
+	TArray<FLean> GetLeans();
 
 };
