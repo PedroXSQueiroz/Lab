@@ -6,6 +6,9 @@
 #include "Animation/AnimInstance.h"
 #include "BaseAnimInstance.generated.h"
 
+/****
+* IKS
+*****/
 USTRUCT(BlueprintType)
 struct FIKParams 
 {
@@ -79,6 +82,9 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	FVector HitNormal;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector HittedTraceLocation;
+
 	UPROPERTY(BlueprintReadOnly)
 	FVector CurrentLockLocation;
 
@@ -93,6 +99,9 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FVector FinalIKLocation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FRotator FinalIKRotation;
 
 	UPROPERTY(BlueprintReadOnly)
 	bool Hitted;
@@ -113,6 +122,7 @@ public:
 
 	FIKData(
 			float weight
+		,	FVector hittedTraceLocation
 		,	FVector reference
 		,	FVector normal
 		,	FVector location
@@ -120,6 +130,7 @@ public:
 		,	float rotationWeight = 0
 	): 
 		StartReferenceLocation(reference)
+	,	HittedTraceLocation(hittedTraceLocation)
 	,	Location(location)
 	,	Weight(weight)
 	,	Rotation(rotation)
@@ -131,6 +142,9 @@ public:
 
 	UPROPERTY()
 	FVector Location;
+
+	UPROPERTY()
+	FVector HittedTraceLocation;
 
 	UPROPERTY()
 	FRotator Rotation;
@@ -175,6 +189,43 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float RootIKWeight;
 
+};
+
+
+/************
+* TRANSITIONS
+*************/
+UINTERFACE()
+class UTransitionModifier : public UInterface
+{
+	GENERATED_BODY()
+};
+
+class G_LAB_API ITransitionModifier
+{
+	GENERATED_BODY()
+
+public:
+
+	virtual void Execute(UBaseAnimInstance* anim, FIKParams& currentParam, FTransitIKParams& transitParams) PURE_VIRTUAL(TEXT("NOT IMPLEMENTED YET"), return; );
+
+};
+
+UCLASS(BlueprintType, Blueprintable, EditInlineNew, DefaultToInstanced)
+class G_LAB_API UTransitionModifierAdditionalHeight : public UObject, public ITransitionModifier
+{
+
+	GENERATED_BODY()
+
+public:
+
+	virtual void Execute(UBaseAnimInstance* anim, FIKParams& currentParam, FTransitIKParams& transitParams) override;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName HeightCurve;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float HeightScale{ 8 };
 };
 
 USTRUCT(BlueprintType, Blueprintable)
@@ -306,14 +357,14 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure = true)
 	TArray<FIKParams> GetIKParamsValues();
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Movement")
-	bool StoppingMovementAnimEnabled;
-
 	UFUNCTION(BlueprintCallable)
 	void SetStopping(bool flag);
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|IKs")
 	TArray<FIKRoots> IKRoots;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|IKs")
+	bool DebugIKs { false };
 
 	/***************
 	* VELOCITY STATS
@@ -342,6 +393,9 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	bool IsTransitioning;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool StoppingMovementAnimEnabled;
+
 	UPROPERTY()
 	TMap<FName, FTransitIKParams> IKTransitionInitialLocation;
 
@@ -356,8 +410,20 @@ public:
 	
 	FVector GetRelativeIKLocation(FVector ikLocation);
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Movement")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Transition|Movement")
 	bool MovingIdleTransitAnimEnabled;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Transition|IKs")
+	bool DebugTransitionIKs{ false };
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Transition|IKs")
+	bool OverrideRootDuringTransition;
+
+	UPROPERTY(BlueprintReadWrite)
+	FVector OverrideRootDuringTranitionLocation;
+
+	UPROPERTY(BlueprintReadWrite)
+	FRotator OverrideRootDuringTranitionRotator;
 
 	/*****
 	* LEAN
