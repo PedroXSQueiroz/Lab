@@ -419,37 +419,68 @@ void UBaseAnimInstance::UpdateLean()
     {
         return;
     }
-    
+
     for (FLeanParams& lean : this->LeanParans) 
     {
         float curveOffset = 1.0f / (float) lean.BoneChain.Num();
-        float currentCurveStage = curveOffset;
+        float currentCurveStage = 0;
         
         //FIXME: IS POSSIBLE ONLY ON HORIZONTAL PLANE, SHOULD BE POSSIBLE ON ANY DIRECTION
+        FRotator characRotator = charac->GetControlRotation();
+        characRotator.Yaw -= 90;
+        FVector lastInput = charac->GetLastMovementInputVector();
+
+        if (lastInput.IsZero()) 
+        {
+            return;
+        }
+
+        FVector input = characRotator.RotateVector(lastInput);
+        //input.Normalize();
+
+        DrawDebugLine(
+            this->GetWorld(),
+            charac->GetActorLocation(),
+            charac->GetActorLocation() + (charac->GetLastMovementInputVector() * 100),
+            FColor::Red
+        );
+        
         FRotator desiredRotation = FRotator(
+            0,
+            charac->GetLastMovementInputVector().Rotation().Yaw,
+            0
+        );
+
+        FRotator currentRotation = FRotator(
             0,
             charac->GetActorRotation().Yaw,
             0
         );
 
+        FRotator rawDiffAngle = UKismetMathLibrary::NormalizedDeltaRotator(currentRotation, desiredRotation);
+
         FRotator diffAngle = UKismetMathLibrary::RLerp(
                 lean.PreviewDiffLeanAngle
-            ,   UKismetMathLibrary::NormalizedDeltaRotator(lean.PreviewLeanAngle, desiredRotation) * charac->GetLastMovementInputVector().Length()    
+            ,   rawDiffAngle
             ,   lean.Velocity
-            ,   true
+            ,   false
         );
+
+        FRotator diffApplied = FRotator::ZeroRotator;
 
         for (FLeanBone& currentBone : lean.BoneChain) 
         {
             
             float currentIntensity = lean.LeanIntensityCurve.GetRichCurve()->Eval(currentCurveStage);
 
+            FRotator currentAdditive = FRotator(
+                lean.MaxAdditiveAngle.Pitch * diffAngle.Pitch * currentIntensity,
+                lean.MaxAdditiveAngle.Yaw * diffAngle.Yaw * currentIntensity,
+                lean.MaxAdditiveAngle.Roll * diffAngle.Roll * currentIntensity
+            ) - diffApplied;
+
             currentBone.Transform.SetRotation(
-                FRotator(
-                    lean.MaxAdditiveAngle.Pitch * diffAngle.Pitch * currentIntensity,
-                    lean.MaxAdditiveAngle.Yaw   * diffAngle.Yaw * currentIntensity,
-                    lean.MaxAdditiveAngle.Roll  * diffAngle.Roll * currentIntensity
-                ).Quaternion()
+                currentAdditive.Quaternion()
             );
             
 
@@ -461,6 +492,7 @@ void UBaseAnimInstance::UpdateLean()
             );
 
             currentCurveStage += curveOffset;
+            diffApplied += currentAdditive;
 
         }
         
