@@ -248,6 +248,33 @@ public:
 
 	UPROPERTY(BlueprintReadOnly)
 	FVector InitialLocation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (MustImplement = "TransitionModifier"))
+	TArray<TSubclassOf<UObject>> Modifier;
+
+	UPROPERTY()
+	TArray<ITransitionModifier*> ModifierInstances;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName RootCurveName;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName RootBoneReference;
+
+	UPROPERTY()
+	FVector TransitLockLocation;
+
+	UPROPERTY()
+	FVector InitialRootLocation;
+
+	UPROPERTY()
+	FRotator InitialRootRotation;
+
+	UPROPERTY(BlueprintReadWrite)
+	FVector CurrentRootLocation;
+
+	UPROPERTY(BlueprintReadWrite)
+	FRotator CurrrentRootRotation;
 };
 
 USTRUCT()
