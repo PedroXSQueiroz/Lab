@@ -113,13 +113,17 @@ FIKData UBaseAnimInstance::GetIKData(const FIKParams& ikParams, bool& hitted)
             );
         }
 
+        
         float asideAlignment = UKismetMathLibrary::DegAtan2(traceResult.Normal.Y, traceResult.Normal.Z);
         float forwardAlignment = UKismetMathLibrary::DegAtan2(traceResult.Normal.X, traceResult.Normal.Z) * -1;
 
-        FRotator effectorBoneAdditiveRotation = FRotator(
-                forwardAlignment + ikParams.EffectorAddtiveRotationOffset.Pitch
+        
+        FRotator effectorBoneAdditiveRotation = 
+            FRotator(
+                forwardAlignment
             ,   0
-            ,   asideAlignment + ikParams.EffectorAddtiveRotationOffset.Roll);
+            ,   asideAlignment
+        );
 
         float rotationWeight = this->GetCurveValue(ikParams.WeightRotationCurveName);
      
@@ -579,28 +583,55 @@ void UBaseAnimInstance::UpdateLean()
         }
 
         FVector input = characRotator.RotateVector(lastInput);
-        //input.Normalize();
-
-        DrawDebugLine(
-            this->GetWorld(),
-            charac->GetActorLocation(),
-            charac->GetActorLocation() + (charac->GetLastMovementInputVector() * 100),
-            FColor::Red
-        );
         
         FRotator desiredRotation = FRotator(
-            0,
+            charac->GetLastMovementInputVector().Rotation().Pitch,
             charac->GetLastMovementInputVector().Rotation().Yaw,
-            0
+            charac->GetLastMovementInputVector().Rotation().Roll
         );
 
         FRotator currentRotation = FRotator(
-            0,
+            charac->GetActorRotation().Pitch,
             charac->GetActorRotation().Yaw,
-            0
+            charac->GetActorRotation().Roll
         );
 
         FRotator rawDiffAngle = UKismetMathLibrary::NormalizedDeltaRotator(currentRotation, desiredRotation);
+
+        bool exceededMax = false;
+        if (this->ShouldStartTurnInPlace(lean.StartingTurnInPlace, rawDiffAngle, exceededMax) && lean.StartingTurnInPlace.ParamsResolver)
+        {
+            UE_LOG(LogTemp, Log, TEXT("should Start turnInPlace"))
+            
+            UObject* resolverInstance = lean.StartingTurnInPlace.ParamsResolver.GetDefaultObject();
+            ITurnInPlaceParamsResolver* resolver = Cast<ITurnInPlaceParamsResolver>(resolverInstance);
+
+            if (resolver) 
+            {
+                bool paramsFound = false;
+                
+                FTurnInPlaceParams turnInPlace = resolver->GetParamsForLean(
+                    Cast<ACharacter>(this->GetOwningActor()),
+                    rawDiffAngle,
+                    exceededMax,
+                    paramsFound
+                );
+
+                if (paramsFound) 
+                {
+                    UE_LOG(LogTemp, Log, TEXT("Starting turnInPlace"))
+                    
+                    return;
+                }
+
+                UE_LOG(LogTemp, Log, TEXT("params for turnInPlace not found"))
+            }
+            else 
+            {
+                UE_LOG(LogTemp, Log, TEXT("resolver for turnInPlace not found"))
+            }
+        }
+
 
         FRotator diffAngle = UKismetMathLibrary::RLerp(
                 lean.PreviewDiffLeanAngle
@@ -608,6 +639,8 @@ void UBaseAnimInstance::UpdateLean()
             ,   lean.Velocity
             ,   false
         );
+
+
 
         FRotator diffApplied = FRotator::ZeroRotator;
 
@@ -625,15 +658,7 @@ void UBaseAnimInstance::UpdateLean()
             currentBone.Transform.SetRotation(
                 currentAdditive.Quaternion()
             );
-            
-
-            UE_LOG(LogTemp, Log, TEXT("[Lean] bone: %s rot: %.2f, %.2f, %.2f"),
-                *currentBone.Name.ToString(),
-                currentBone.Transform.Rotator().Pitch,
-                currentBone.Transform.Rotator().Yaw,
-                currentBone.Transform.Rotator().Roll
-            );
-
+           
             currentCurveStage += curveOffset;
             diffApplied += currentAdditive;
 
@@ -655,4 +680,53 @@ TArray<FLean> UBaseAnimInstance::GetLeans()
     }
 
     return leans;
+}
+
+bool UBaseAnimInstance::ShouldStartTurnInPlace(FTurnInPlaceStartMap turnInPlace, FRotator rotator, bool& exceededMax)
+{
+    bool shouldStart = false;
+    
+    bool right = false, left = false;
+    ValidateRange(rotator.Yaw, turnInPlace.TriggerTurnInPlaceYaw, left, right);
+    shouldStart = left || right;
+    exceededMax = right;
+
+    bool rightRoll = false, leftRoll = false;
+    ValidateRange(rotator.Roll, turnInPlace.TriggerTurnInPlaceYaw, leftRoll, rightRoll);
+    shouldStart = leftRoll || rightRoll || shouldStart;
+    exceededMax = rightRoll || exceededMax;
+
+    bool up = false, down = false;
+    ValidateRange(rotator.Yaw, turnInPlace.TriggerTurnInPlaceYaw, down, up);
+    shouldStart = down || up || shouldStart;
+    exceededMax = up || exceededMax;
+
+    return shouldStart;
+}
+
+void ValidateRange(float angle, float range, bool& belowMin, bool& aboveMax)
+{
+    aboveMax = false;
+    belowMin = false;
+    if (range != 0) 
+    {
+        if (angle > FMath::Abs(range)) 
+        {
+            aboveMax = true;
+        }
+        else if (angle < ( FMath::Abs(range) * -1 ))
+        {
+            belowMin = true;
+        }
+    }
+    
+}
+
+FTurnInPlaceParams UHorizontalTurnInPlaceParamasResolver::GetParamsForLean(
+        const ACharacter* charac
+    ,   const FRotator additiveLean
+    ,   const bool excededMax
+    ,   bool& found)
+{
+    return FTurnInPlaceParams();
 }

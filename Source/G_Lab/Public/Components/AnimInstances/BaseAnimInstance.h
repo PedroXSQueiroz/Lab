@@ -261,6 +261,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName RootBoneReference;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FRotator EffectorRotationFactor;
+
 	UPROPERTY()
 	FVector TransitLockLocation;
 
@@ -300,6 +303,84 @@ public:
 };
 
 USTRUCT(BlueprintType, Blueprintable)
+struct FTurnInPlaceParams 
+{
+
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UAnimSequence* Anim;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FRuntimeFloatCurve TurningRate;
+
+	UPROPERTY()
+	FRotator InitialRotation;
+
+	UPROPERTY()
+	FRotator FinalRotation;
+
+};
+
+UINTERFACE()
+class UTurnInPlaceParamsResolver : public UInterface
+{
+	GENERATED_BODY()
+};
+
+
+class ITurnInPlaceParamsResolver
+{
+	GENERATED_BODY()
+
+public:
+
+	virtual FTurnInPlaceParams GetParamsForLean(
+		const ACharacter* charac, 
+		const FRotator additiveLean, 
+		const bool excededMax,
+		bool& found) PURE_VIRTUAL( TEXT("NOT IMPLEMENTED YET"), return FTurnInPlaceParams(); );
+};
+
+UCLASS()
+class UHorizontalTurnInPlaceParamasResolver : public UObject, public ITurnInPlaceParamsResolver
+{
+	GENERATED_BODY()
+
+public:
+
+	virtual FTurnInPlaceParams GetParamsForLean(
+		const ACharacter* charac,
+		const FRotator additiveLean,
+		const bool excededMax,
+		bool& found) override;
+
+};
+
+USTRUCT(BlueprintType, Blueprintable)
+struct FTurnInPlaceStartMap 
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float TriggerTurnInPlacePitch;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float TriggerTurnInPlaceYaw;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float TriggerTurnInPlaceRoll;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (MustImplement = "TurnInPlaceParamsResolver"))
+	TSubclassOf<UObject> ParamsResolver;
+
+};
+
+USTRUCT(BlueprintType, Blueprintable)
 struct FLeanParams 
 {
 	GENERATED_BODY()
@@ -313,7 +394,7 @@ public:
 	FName Effector;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	FRuntimeFloatCurve  LeanIntensityCurve;
+	FRuntimeFloatCurve LeanIntensityCurve;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FRotator MaxAdditiveAngle;
@@ -332,6 +413,10 @@ public:
 
 	UPROPERTY()
 	FRotator PreviewDiffLeanAngle;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FTurnInPlaceStartMap StartingTurnInPlace;
+
 };
 
 USTRUCT(BlueprintType, Blueprintable)
@@ -468,4 +553,14 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure = true)
 	TArray<FLean> GetLeans();
 
+	/**************
+	* TURN IN PLACE
+	**************/
+	bool ShouldStartTurnInPlace(FTurnInPlaceStartMap turnInPlace, FRotator diff, bool& exceededMax);
+
+	UPROPERTY()
+	FTurnInPlaceParams CurrnetTurnInPlaceActive;
 };
+
+
+void ValidateRange(float angle, float range, bool& belowMin, bool& aboveMax);
