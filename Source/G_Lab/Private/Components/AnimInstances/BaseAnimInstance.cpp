@@ -33,8 +33,6 @@ FIKData UBaseAnimInstance::GetIKData(const FIKParams& ikParams, bool& hitted)
             this->GetCurveValue(ikParams.WeightCurveName) 
         :   ikParams.Weight;
 
-    UE_LOG(LogTemp, Log, TEXT("WEIGHT:%.2f"), currentWeight);
-    
     bool getLockWeightByCurve = ikParams.LockWeightCurveName.IsValid() 
                             &&  !ikParams.LockWeightCurveName.IsNone()
                             &&  ikParams.LockWeightCurveName.GetStringLength() > 0;
@@ -311,7 +309,7 @@ void UBaseAnimInstance::SetInitialIKTransitions(TArray<FTransitIKParams> iksToTr
         }
         else
         {
-            UE_LOG(LogTemp, Log, TEXT("IK settings: %s not found"), *currentIK.IKName.ToString());
+            //ERROR TREATMENT?
         }
         
     }
@@ -480,8 +478,6 @@ void UTransitionModifierAdditionalHeight::Execute(UBaseAnimInstance* anim, FIKPa
 {
     float currentHeightRate = 1 - anim->GetCurveValue(this->HeightCurve);
 
-    UE_LOG(LogTemp, Log, TEXT("ADDITIONAL HEIGHT: %.2f, WEIGHT:%.2f, IK: %s"), currentHeightRate * this->HeightScale, anim->GetCurveValue(this->HeightCurve), *transitParams.IKName.ToString());
-
     FVector bodyReferenceLocation = anim->GetOwningComponent()->GetComponentLocation();
     
     FVector relativeLocationAlignedToGround = FTransform(
@@ -544,8 +540,6 @@ bool UBaseAnimInstance::SetupLean()
 
             return true;
         }
-
-        UE_LOG(LogTemp, Log, TEXT("ROOT AND EFFECTOR LOOKS TO NOT BE IN THE SAME SEQUENCE"));
 
     }
 
@@ -626,14 +620,6 @@ void UBaseAnimInstance::UpdateLean()
                 currentAdditive.Quaternion()
             );
             
-
-            UE_LOG(LogTemp, Log, TEXT("[Lean] bone: %s rot: %.2f, %.2f, %.2f"),
-                *currentBone.Name.ToString(),
-                currentBone.Transform.Rotator().Pitch,
-                currentBone.Transform.Rotator().Yaw,
-                currentBone.Transform.Rotator().Roll
-            );
-
             currentCurveStage += curveOffset;
             diffApplied += currentAdditive;
 

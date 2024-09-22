@@ -2,6 +2,7 @@
 
 
 #include "Utils/ToggableCache.h"
+#include <Components/AnimInstances/BaseAnimInstance.h>
 
 void FAnimNode_ToggableCache::Initialize_AnyThread(const FAnimationInitializeContext& Context)
 {
@@ -11,9 +12,9 @@ void FAnimNode_ToggableCache::Initialize_AnyThread(const FAnimationInitializeCon
 #pragma optimize("", off)
 void FAnimNode_ToggableCache::Update_AnyThread(const FAnimationUpdateContext& Context)
 {
-	UE_LOG(LogTemp, Log, TEXT("IS CACHING: %s"), this->ShouldCache? *FString("YES") : *FString("NO"))
-	
-	if (this->ShouldCache)
+	UBaseAnimInstance* anim = Cast<UBaseAnimInstance>(Context.GetAnimInstanceObject());
+
+	if (!anim->IsTransitioning)
 	{
 		this->BasePose.Update(Context);
 	}
@@ -22,6 +23,7 @@ void FAnimNode_ToggableCache::Update_AnyThread(const FAnimationUpdateContext& Co
 
 void FAnimNode_ToggableCache::Evaluate_AnyThread(FPoseContext& Output)
 {
+	
 	this->BasePose.Evaluate(Output);
 }
 
